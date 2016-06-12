@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using Functional.Fluent;
+using System.Linq.Expressions;
 
 namespace RulesEngine.Injectors
 {
@@ -6,21 +7,13 @@ namespace RulesEngine.Injectors
     {
         public static InjectorFactory GetInstance() => new InjectorFactory();        
 
-        public IInjector<TA, TB> GetInjector<TA, TB>(Expression expr, ParameterExpression pe)
-        {
-            //TODO: replace with type pattern matching (Function.Fluent)
-            if (expr is MemberExpression)
-                return new MemberInjector<TA, TB>().Init(pe);
-            if (expr is MethodCallExpression)
-                return new MethodCallInjector<TA, TB>().Init(pe);
-            if (expr is LambdaExpression)
-                return new LambdaInjector<TA, TB>().Init(pe);
-            if (expr is BinaryExpression)
-                return new BinaryInjector<TA, TB>().Init(pe);
-            if (expr is UnaryExpression)
-                return new UnaryInjector<TA, TB>().Init(pe);
-
-            return new DefaultInjector<TA, TB>().Init(pe);
-        }
+        public IInjector<TA, TB> GetInjector<TA, TB>(Expression expr, ParameterExpression pe) =>  expr.ToMaybe().TypeMatch()
+                .With(Case.Is<MemberExpression>(), _ => (IInjector<TA,TB>)new MemberInjector<TA, TB>())
+                .With(Case.Is<MethodCallExpression>(), _ => new MethodCallInjector<TA, TB>())
+                .With(Case.Is<LambdaExpression>(), _ => new LambdaInjector<TA, TB>())
+                .With(Case.Is<BinaryExpression>(), _ => new BinaryInjector<TA, TB>())
+                .With(Case.Is<UnaryExpression>(), _ => new UnaryInjector<TA, TB>())
+                .Else(_=> new DefaultInjector<TA, TB>())
+                .Do().Init(pe);
     }
 }
